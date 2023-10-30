@@ -1,25 +1,19 @@
 ﻿using EnsureThat;
 using Serilog;
-using Serilog.Core;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO.Abstractions;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace ReplaceInFiles
 {
-    public class FileReplacer
+    public class FileReplacer : IFileReplacer
     {
         private readonly ConcurrentQueue<string> _filesQueue;
         private int _parallelsReplacement;
         private string _startPattern;
         private string _endPattern;
-        private readonly Dictionary<string, string> _variableDictionary;
+        private bool _debug;
+        private readonly List<ReplacementVariable> _replacementVariables;
         private readonly ILogger _logger;
         private readonly IFileSystem _fileSystem;
 
@@ -28,7 +22,7 @@ namespace ReplaceInFiles
             _filesQueue = new ConcurrentQueue<string>();
             _parallelsReplacement = 5;
             _filesQueue = new ConcurrentQueue<string>();
-            _variableDictionary = new Dictionary<string, string>();
+            _replacementVariables = new List<ReplacementVariable>();
             _logger = logger;
             _fileSystem = fileSystem;
 
@@ -63,10 +57,16 @@ namespace ReplaceInFiles
             return this;
         }
 
+        public FileReplacer DebugMode(bool? debug)
+        {
+            _debug = debug == true;
+            return this;
+        }
+
         public FileReplacer MatchPattern(string startPattern, string endPattern)
         {
-            Ensure.That(startPattern).IsNotEmptyOrWhiteSpace();
-            Ensure.That(endPattern).IsNotEmptyOrWhiteSpace();
+            Ensure.That(startPattern).IsNotNull();
+            Ensure.That(endPattern).IsNotNull();
 
             _startPattern = startPattern;
             _endPattern = endPattern;
@@ -76,7 +76,16 @@ namespace ReplaceInFiles
 
         public FileReplacer ReplaceVariable(string variableName, string replacementValue)
         {
-            _variableDictionary.Add(variableName, replacementValue);
+            Ensure.That(variableName).IsNotEmptyOrWhiteSpace();
+            Ensure.That(replacementValue).IsNotNull();
+
+            ReplacementVariable replacementVariable = new()
+            {
+                Name = variableName,
+                Value = replacementValue
+            };
+
+            _replacementVariables.Add(replacementVariable);
             return this;
         }
 
@@ -104,7 +113,7 @@ namespace ReplaceInFiles
             if (!_filesQueue.Any())
                 return;
 
-            if (_variableDictionary.Count == 0)
+            if (!_replacementVariables.Any())
             {
                 throw new InvalidOperationException("No variable replacements provided.");
             }
@@ -124,25 +133,46 @@ namespace ReplaceInFiles
             var content = _fileSystem.File.ReadAllText(filePath);
             int variableFound = 0;
 
-            var regexPattern = @"\" + _startPattern + "(.*?)" + _endPattern;
-            //var regexPattern = @"\${(.*?)}";
-            content = Regex.Replace(content, regexPattern, match =>
+            if (string.IsNullOrEmpty(_startPattern) && string.IsNullOrEmpty(_endPattern))
             {
-                var variableName = match.Groups[1].Value;
-                if (_variableDictionary.TryGetValue(variableName, out var replacement))
+                foreach (var variable in _replacementVariables)
                 {
-                    _logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variableName, replacement);
-                    variableFound++;
-                    return replacement;
+                    content = Regex.Replace(content, variable.Name, match =>
+                    {   
+                        _logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variable.Name, variable.Value);
+                        variableFound++;
+                        return variable.Value;
+                    });
                 }
-                else
+            }
+            else
+            {
+                var regexPattern = @"\" + _startPattern + "(.*?)" + _endPattern;
+                content = Regex.Replace(content, regexPattern, match =>
                 {
-                    return match.Value;
-                }
-            });
+                    var variableName = match.Groups[1].Value;
+                    var variable = _replacementVariables.Find(x => x.Name == variableName);
+                    if (variable != null)
+                    {
+                        _logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variableName, variable.Value);
+                        variableFound++;
+                        return variable.Value;
+                    }
+                    else
+                    {
+                        if (_debug)
+                            _logger.Information("Match not found | {filePath} | {variableName}", filePath, variableName);
+
+                        return match.Value;
+                    }
+                });
+            }
 
             if (variableFound > 0)
                 _fileSystem.File.WriteAllText(filePath, content);
+            else if(_debug)
+                _logger.Information("No Changed | {filePath}", filePath);
+
         }
     }
 }

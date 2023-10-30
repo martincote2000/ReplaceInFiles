@@ -1,0 +1,13 @@
+﻿namespace ReplaceInFiles
+{
+    public interface IFileReplacer
+    {
+        FileReplacer ForFile(string filePath);
+        FileReplacer ForFiles(List<string> files);
+        FileReplacer MatchPattern(string startPattern, string endPattern);
+        FileReplacer ParallelsReplacement(int parallelsReplacement);
+        void Replace();
+        FileReplacer ReplaceVariable(params string[] rawValues);
+        FileReplacer ReplaceVariable(string variableName, string replacementValue);
+    }
+}

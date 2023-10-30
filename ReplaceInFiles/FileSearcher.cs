@@ -62,7 +62,6 @@ namespace ReplaceInFiles
             if (folderNames == null || folderNames.Length == 0)
                 return this;
 
-
             _folderSearcher.IgnoreFolderNames(folderNames);
             return this;
         }
@@ -87,7 +86,7 @@ namespace ReplaceInFiles
                 }
             }
 
-            return foundFiles;
+            return foundFiles.Distinct().ToList();
         }
 
     }
