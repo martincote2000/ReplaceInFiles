@@ -3,7 +3,7 @@ using System.Xml.Linq;
 
 namespace ReplaceInFiles
 {
-    public class FolderSearcher
+    public class FolderSearcher : IFolderSearcher
     {
         private string _rootDirectory;
         private bool _searchSubfolders = true;
@@ -34,9 +34,9 @@ namespace ReplaceInFiles
 
         public FolderSearcher IgnoreFolderNames(params string[] folderNames)
         {
-            foreach(var folderName in folderNames)
+            foreach (var folderName in folderNames)
             {
-                if(!string.IsNullOrWhiteSpace(folderName))
+                if (!string.IsNullOrWhiteSpace(folderName))
                     _ignoredFolderNames.Add(folderName);
             }
             return this;
@@ -56,8 +56,10 @@ namespace ReplaceInFiles
         {
             EnsureRootFolderExists();
 
-            List<string> filtredDirectories = new List<string>();
-            filtredDirectories.Add(_rootDirectory);
+            List<string> filtredDirectories = new List<string>
+            {
+                _rootDirectory
+            };
 
             SearchOption searchOption = _searchSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
 
@@ -65,8 +67,7 @@ namespace ReplaceInFiles
 
             foreach (var folder in directories)
             {
-                IDirectoryInfo directoryInfo = _fileSystem.DirectoryInfo.New(folder);
-                if (!_ignoredFolderNames.Exists(folder => directoryInfo.Name.Equals(folder, StringComparison.OrdinalIgnoreCase)))
+                if (!_ignoredFolderNames.Exists(ignoreFolder => folder.Contains(ignoreFolder, StringComparison.InvariantCultureIgnoreCase)))
                     filtredDirectories.Add(folder);
             }
 
