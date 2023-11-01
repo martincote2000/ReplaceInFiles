@@ -40,7 +40,9 @@ The variable to find using
 
 
 ### Find and replace exact string
-The file replacer will search the exact string in the files found.
+The file replacer will search the exact string in the files found using `nopattern` parameter.
+
+
 ```command
 "ReplaceInFiles.exe" ^
 	--folder "C:\MyFolder" ^
