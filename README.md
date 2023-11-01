@@ -5,8 +5,8 @@ with files which are not structured to be replaced with a integrated variable su
 The files supported are any type that can be read in text format   
 **Example:** txt, json, html
 
-The variable to find could be
-- with match pattern `${}`  
+The variable to find using
+- match pattern `${}`  
 - exact string (without match pattern)
 
 
