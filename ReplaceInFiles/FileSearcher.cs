@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using EnsureThat;
+using System.Collections.Concurrent;
 using System.IO.Abstractions;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ReplaceInFiles
 {
@@ -13,16 +9,30 @@ namespace ReplaceInFiles
         private readonly IFileSystem _fileSystem;
         private readonly List<string> _extensions;
         private readonly FolderSearcher _folderSearcher;
+        private int _parallelsExecution;
+        private readonly ConcurrentQueue<string> _folderQueue;
 
         public FileSearcher(IFileSystem fileSystem)
         {
+            _parallelsExecution = 5;
             _fileSystem = fileSystem;
             _folderSearcher = new FolderSearcher(_fileSystem);
             _extensions = new List<string>();
+            _folderQueue = new ConcurrentQueue<string>();
         }
+
         public FileSearcher InDirectory(string directory)
         {
             _folderSearcher.InDirectory(directory);
+            return this;
+        }
+
+        public FileSearcher ParallelsExecution(int parallelsExecution)
+        {
+            EnsureThat.Ensure.That(parallelsExecution).IsInRange(1, 10);
+            _folderSearcher.ParallelsExecution(parallelsExecution);
+
+            _parallelsExecution = parallelsExecution;
             return this;
         }
 
@@ -73,18 +83,26 @@ namespace ReplaceInFiles
                 throw new ArgumentException($"You should determine the directory before searching.", nameof(InDirectory));
 #pragma warning restore S3928 // Parameter names used into ArgumentException constructors should match an existing one 
 
-
             var folders = _folderSearcher.Search();
+            folders.ForEach(d => _folderQueue.Enqueue(d));
+
             var foundFiles = new List<string>();
 
-            foreach (var folder in folders)
-            {
-                foreach (var extension in _extensions)
+            Parallel.ForEach(
+                _folderQueue,
+                new ParallelOptions { MaxDegreeOfParallelism = _parallelsExecution },
+                folder =>
                 {
-                    var foundFilesInFolder = _fileSystem.Directory.GetFiles(folder, $"*.{extension}", SearchOption.TopDirectoryOnly);
-                    foundFiles.AddRange(foundFilesInFolder);
-                }
-            }
+                    foreach (var extension in _extensions)
+                    {
+                        var foundFilesInFolder = _fileSystem.Directory.GetFiles(folder, $"*.{extension}", SearchOption.TopDirectoryOnly).ToList();
+                        foundFilesInFolder.ForEach((f) => {
+                            if(!string.IsNullOrWhiteSpace(f))
+                                foundFiles.Add(f);
+                        });  
+                    }
+                    _folderQueue.TryDequeue(out string dequeueValue);
+                });
 
             return foundFiles.Distinct().ToList();
         }

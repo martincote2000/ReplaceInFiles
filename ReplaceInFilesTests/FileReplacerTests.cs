@@ -56,9 +56,9 @@ namespace FinInFilesTests
         {
             // Act & Assert
             if(shouldThrowException)
-                _replacer.Invoking(x => x.ParallelsReplacement(parallelReplacement)).Should().Throw<Exception>();
+                _replacer.Invoking(x => x.ParallelsExecution(parallelReplacement)).Should().Throw<Exception>();
             else
-                _replacer.Invoking(x => x.ParallelsReplacement(parallelReplacement)).Should().NotThrow();
+                _replacer.Invoking(x => x.ParallelsExecution(parallelReplacement)).Should().NotThrow();
         }
 
         [Fact]
@@ -114,7 +114,7 @@ namespace FinInFilesTests
 
             _replacer
                 .ReplaceVariable("ParameterName1=MyValue1")
-                .ParallelsReplacement(1)
+                .ParallelsExecution(1)
                 .ForFile(filePath);
 
             // Act 
@@ -144,7 +144,7 @@ namespace FinInFilesTests
 
             _replacer
                 .ReplaceVariable(parameters)
-                .ParallelsReplacement(1)
+                .ParallelsExecution(1)
                 .ForFile(filePath);
 
             // Act 

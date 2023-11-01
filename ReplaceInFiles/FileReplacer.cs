@@ -9,18 +9,19 @@ namespace ReplaceInFiles
     public class FileReplacer : IFileReplacer
     {
         private readonly ConcurrentQueue<string> _filesQueue;
-        private int _parallelsReplacement;
+        private int _parallelsExecution;
         private string _startPattern;
         private string _endPattern;
-        private bool _debug;
+        private int _reportEveryIteration;
+        private Action<double, double> _reportProgressAction;
+        private bool _verbose;
         private readonly List<ReplacementVariable> _replacementVariables;
         private readonly ILogger _logger;
         private readonly IFileSystem _fileSystem;
 
         public FileReplacer(ILogger logger, IFileSystem fileSystem)
         {
-            _filesQueue = new ConcurrentQueue<string>();
-            _parallelsReplacement = 5;
+            _parallelsExecution = 5;
             _filesQueue = new ConcurrentQueue<string>();
             _replacementVariables = new List<ReplacementVariable>();
             _logger = logger;
@@ -30,17 +31,17 @@ namespace ReplaceInFiles
             _endPattern = "}";
         }
 
-        public FileReplacer ParallelsReplacement(int parallelsReplacement)
+        public FileReplacer ParallelsExecution(int parallelsExecution)
         {
-            EnsureThat.Ensure.That(parallelsReplacement).IsInRange(1, 10);
+            EnsureThat.Ensure.That(parallelsExecution).IsInRange(1, 10);
 
-            _parallelsReplacement = parallelsReplacement;
+            _parallelsExecution = parallelsExecution;
             return this;
         }
 
         public FileReplacer ForFile(string filePath)
         {
-            Ensure.That(filePath).IsNotEmptyOrWhiteSpace();
+            Ensure.That(filePath).IsNotNullOrWhiteSpace();
 
             if (!_fileSystem.File.Exists(filePath))
                 throw new FileNotFoundException("File doesn't exists", filePath);
@@ -57,9 +58,19 @@ namespace ReplaceInFiles
             return this;
         }
 
-        public FileReplacer DebugMode(bool? debug)
+        public FileReplacer VerboseMode(bool verbose)
         {
-            _debug = debug == true;
+            _verbose = verbose;
+            return this;
+        }
+
+        public FileReplacer ReportProgress(int every, Action<double, double> reportProgress)
+        {
+            Ensure.That(every).IsGt(0);
+            Ensure.That(reportProgress).IsNotNull();
+
+            _reportEveryIteration = every;
+            _reportProgressAction = reportProgress;
             return this;
         }
 
@@ -118,14 +129,31 @@ namespace ReplaceInFiles
                 throw new InvalidOperationException("No variable replacements provided.");
             }
 
+            long fileProcessed = 0;
+            long fileCount = _filesQueue.Count;
+
             Parallel.ForEach(
                 _filesQueue,
-                new ParallelOptions { MaxDegreeOfParallelism = _parallelsReplacement },
+                new ParallelOptions { MaxDegreeOfParallelism = _parallelsExecution },                
                 filePath =>
                 {
                     ReplaceInFile(filePath);
+
+                    fileProcessed = Interlocked.Increment(ref fileProcessed);
+                    TryReportProgress(fileCount, fileProcessed);
+
                     _filesQueue.TryDequeue(out string dequeueValue);
                 });
+
+            TryReportProgress(fileCount, fileProcessed);
+        }
+
+        private void TryReportProgress(long fileCount, long fileProcessed)
+        {   
+            if (_reportProgressAction != null && (fileProcessed % _reportEveryIteration) == 0)
+            {
+                _reportProgressAction(fileCount, fileProcessed);
+            }
         }
 
         private void ReplaceInFile(string filePath)
@@ -138,8 +166,10 @@ namespace ReplaceInFiles
                 foreach (var variable in _replacementVariables)
                 {
                     content = Regex.Replace(content, variable.Name, match =>
-                    {   
-                        _logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variable.Name, variable.Value);
+                    {
+                        if (_verbose)
+                            _logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variable.Name, variable.Value);
+
                         variableFound++;
                         return variable.Value;
                     });
@@ -154,15 +184,14 @@ namespace ReplaceInFiles
                     var variable = _replacementVariables.Find(x => x.Name == variableName);
                     if (variable != null)
                     {
-                        _logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variableName, variable.Value);
+                        if (_verbose)
+                            _logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variableName, variable.Value);
+
                         variableFound++;
                         return variable.Value;
                     }
                     else
                     {
-                        if (_debug)
-                            _logger.Information("Match not found | {filePath} | {variableName}", filePath, variableName);
-
                         return match.Value;
                     }
                 });
@@ -170,7 +199,7 @@ namespace ReplaceInFiles
 
             if (variableFound > 0)
                 _fileSystem.File.WriteAllText(filePath, content);
-            else if(_debug)
+            else if(_verbose)
                 _logger.Information("No Changed | {filePath}", filePath);
 
         }

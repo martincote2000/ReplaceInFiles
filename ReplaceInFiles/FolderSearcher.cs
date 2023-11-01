@@ -1,4 +1,6 @@
-﻿using System.IO.Abstractions;
+﻿using EnsureThat;
+using System.Collections.Concurrent;
+using System.IO.Abstractions;
 using System.Xml.Linq;
 
 namespace ReplaceInFiles
@@ -9,9 +11,13 @@ namespace ReplaceInFiles
         private bool _searchSubfolders = true;
         private readonly List<string> _ignoredFolderNames;
         private readonly IFileSystem _fileSystem;
+        private readonly ConcurrentQueue<string> _folderQueue;
+        private int _parallelsExecution;
 
         public FolderSearcher(IFileSystem fileSystem)
         {
+            _parallelsExecution = 5;
+            _folderQueue = new ConcurrentQueue<string>();
             _rootDirectory = string.Empty;
             _fileSystem = fileSystem;
             _ignoredFolderNames = new List<string>();
@@ -23,6 +29,13 @@ namespace ReplaceInFiles
                 throw new ArgumentException($"Folder couldn't be null or empty", nameof(rootDirectory));
 
             _rootDirectory = rootDirectory;
+            return this;
+        }
+
+        public FolderSearcher ParallelsExecution(int parallelsExecution)
+        {
+            EnsureThat.Ensure.That(parallelsExecution).IsInRange(1, 10);
+            _parallelsExecution = parallelsExecution;
             return this;
         }
 
@@ -63,15 +76,51 @@ namespace ReplaceInFiles
 
             SearchOption searchOption = _searchSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
 
-            var directories = _fileSystem.Directory.GetDirectories(_rootDirectory, "*", searchOption);
+            var directories = _fileSystem.Directory.GetDirectories(_rootDirectory, "*", searchOption).ToList();
+            directories.ForEach(d => _folderQueue.Enqueue(d));
 
-            foreach (var folder in directories)
-            {
-                if (!_ignoredFolderNames.Exists(ignoreFolder => folder.Contains(ignoreFolder, StringComparison.InvariantCultureIgnoreCase)))
-                    filtredDirectories.Add(folder);
-            }
 
+            Parallel.ForEach(
+                _folderQueue,
+                new ParallelOptions { MaxDegreeOfParallelism = _parallelsExecution },
+                directory =>
+                {
+                    IDirectoryInfo directoryInfo = _fileSystem.DirectoryInfo.New(directory);
+                    if (!IsIgnoredFolder(directoryInfo) && !IsParentFolderContainsIgnoredFolders(directoryInfo))
+                    {
+                        filtredDirectories.Add(directory);
+                    }
+
+                    _folderQueue.TryDequeue(out string dequeueValue);
+                });
             return filtredDirectories;
         }
+
+        private bool IsIgnoredFolder(IDirectoryInfo directoryInfo)
+        {
+            return _ignoredFolderNames.Any() &&
+                _ignoredFolderNames.Exists(ignoreName => ignoreName.Equals(directoryInfo.Name, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        private bool IsParentFolderContainsIgnoredFolders(IDirectoryInfo directoryInfo)
+        {
+            if(!_ignoredFolderNames.Any())
+                return false;
+
+            IDirectoryInfo parentDirectoryInfo = directoryInfo.Parent;
+
+            while (parentDirectoryInfo != null)
+            {
+                if (IsIgnoredFolder(parentDirectoryInfo))
+                {
+                    return true;
+                }
+                parentDirectoryInfo = parentDirectoryInfo.Parent;
+            }
+
+            return false;
+        }
+
+
     }
 }

@@ -40,9 +40,10 @@ namespace ReplaceInFilesTests
             _fileSystem.AddDirectory($"{_rootDirectory}\\.git");
             _fileSystem.AddDirectory($"{_rootDirectory}\\Folder2");
             _fileSystem.AddDirectory($"{_rootDirectory}\\Folder2\\NODE_MODULES\\Test");
-            _fileSystem.AddDirectory($"{_rootDirectory}\\Folder2");
-            _fileSystem.AddDirectory($"{_rootDirectory}\\Folder2\\node_modules");
             _fileSystem.AddDirectory($"{_rootDirectory}\\Folder3");
+            _fileSystem.AddDirectory($"{_rootDirectory}\\Folder3\\.git\\OtherFolder");
+            _fileSystem.AddDirectory($"{_rootDirectory}\\Folder4");
+            _fileSystem.AddDirectory($"{_rootDirectory}\\Folder4\\SubFolder4");
 
             _folderSearcher.IgnoreFolderNames(ignoreFolder1, ignoreFolder2);
 
@@ -50,7 +51,9 @@ namespace ReplaceInFilesTests
             var folders = _folderSearcher.Search();
 
             // Assert
-            foreach(var folder in folders)
+            folders.Should().HaveCount(6);
+
+            foreach (var folder in folders)
             {
                 folder.Contains(ignoreFolder1, StringComparison.InvariantCultureIgnoreCase).Should().BeFalse("");
                 folder.Contains(ignoreFolder2, StringComparison.InvariantCultureIgnoreCase).Should().BeFalse();
