@@ -39,7 +39,7 @@ The variable to find using
 ```
 
 
-### Find and replace exact match
+### Find and replace exact string
 The file replacer will search the exact string in the files found.
 ```command
 "ReplaceInFiles.exe" ^
