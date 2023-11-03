@@ -1,17 +1,30 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using FluentArgs;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using ReplaceInFiles;
+using ReplaceInFiles.DependencyInjection;
 using Serilog;
 using Spinnerino;
-using System;
 using System.Diagnostics;
-using System.IO.Abstractions;
+
+
+IConfiguration configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+ILogger logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(configuration)
+    .CreateLogger();
+
+var service = CreateServiceCollection()    
+    .AddSingleton(configuration)
+    .AddSingleton(logger);
+
+var builder = service.BuildServiceProvider();
+
 
 Stopwatch stopwatch = Stopwatch.StartNew();
-
-Log.Logger = new LoggerConfiguration()
-                    .WriteTo.Console()
-                    .CreateLogger();
 
 //Global catch all error
 AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionHandler;
@@ -58,10 +71,11 @@ FluentArgsBuilder.New()
         .IsRequired()
     .Call(folder => extensions => replaceparameters => ignorefolderNames => parallelexecution => searchInsubfolder => nopattern => ignorecase => verbose =>
     {
-        IFileSystem fileSystem = new FileSystem();
+        logger.Information("Searching files ...");
 
-        Log.Logger.Information("Searching files ...");
-        var filesFound = new FileSearcher(fileSystem)
+        var filterSearcher = builder.GetService<IFileSearcher>();
+
+        List<string> filesFound = filterSearcher
             .InDirectory(folder)
             .WithExtensions(extensions?.ToArray())
             .ParallelsExecution(parallelexecution)
@@ -69,19 +83,25 @@ FluentArgsBuilder.New()
             .IgnoreFolderNames(ignorefolderNames?.ToArray())
             .Search();
 
-        Log.Logger.Information("Number of file founds: {0}", filesFound.Count);
+        logger.Information("Number of file founds: {0}", filesFound.Count);
 
         if (filesFound.Any())
         {
-            Log.Logger.Information("Replacement starting ... ");
+            logger.Information("Replacement starting ... ");
 
             using (var bar = new InlineProgressBar())
             {
-                var replacer = new FileReplacer(Log.Logger, fileSystem)
+                var replacer = builder.GetService<IFileReplacer>();
+
+                replacer = replacer
                     .ForFiles(filesFound)
                     .ParallelsExecution(parallelexecution)
                     .VerboseMode(verbose)
                     .IgnoreCase(ignorecase)
+                    .ReportFileChange((filePath, variableName, replacementValue) =>
+                    {
+                        logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variableName, replacementValue);
+                    })
                     .ReportProgress(200, (fileCount, fileProcessed) =>
                     {
                         var progressPercentage = Math.Round((fileProcessed / fileCount) * 100);                      
@@ -89,7 +109,7 @@ FluentArgsBuilder.New()
                     })
                     .ReplaceVariable(replaceparameters?.ToArray());
 
-                if (nopattern == true)
+                if (nopattern)
                 {
                     replacer.MatchPattern(string.Empty, string.Empty);
                 }
@@ -101,11 +121,20 @@ FluentArgsBuilder.New()
     })
     .Parse(args);
 
-Log.Logger.Information("Execution time {0}s", stopwatch.Elapsed.TotalSeconds);
+logger.Information("Execution time {0}s", stopwatch.Elapsed.TotalSeconds);
 
 
 void UnhandledExceptionHandler(object sender, UnhandledExceptionEventArgs e)
 {
     var exception = e.ExceptionObject as Exception;
-    Log.Logger.Error(exception, exception.Message);
+    logger.Error(exception, exception.Message);
+}
+
+
+IServiceCollection CreateServiceCollection()
+{
+    var builder = new ServiceCollection()
+        .RegisterReplaceInFiles();
+
+    return builder;
 }

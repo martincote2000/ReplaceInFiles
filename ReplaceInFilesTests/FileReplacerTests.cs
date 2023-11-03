@@ -9,15 +9,12 @@ namespace FinInFilesTests
     public class FileReplacerTests
     {
         private readonly MockFileSystem _fileSystem;
-        private readonly Mock<ILogger> _loggerMock;
         private readonly FileReplacer _replacer;
 
         public FileReplacerTests()
         {
             _fileSystem = new MockFileSystem();
-            _loggerMock = new Mock<ILogger>();
-
-            _replacer = new FileReplacer(_loggerMock.Object, _fileSystem);
+            _replacer = new FileReplacer(_fileSystem);
         }
 
         [Fact]

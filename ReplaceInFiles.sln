@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReplaceInFilesTests", "Repl
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReplaceInFiles.Cli", "ReplaceInFiles.Cli\ReplaceInFiles.Cli.csproj", "{6F7951E4-3567-4B5A-A26E-027762AF90CF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReplaceInFiles", "ReplaceInFiles\ReplaceInFiles.csproj", "{FD4CD571-7F2F-4BDB-8660-8A9737073BAF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{6F7951E4-3567-4B5A-A26E-027762AF90CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6F7951E4-3567-4B5A-A26E-027762AF90CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6F7951E4-3567-4B5A-A26E-027762AF90CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD4CD571-7F2F-4BDB-8660-8A9737073BAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD4CD571-7F2F-4BDB-8660-8A9737073BAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD4CD571-7F2F-4BDB-8660-8A9737073BAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD4CD571-7F2F-4BDB-8660-8A9737073BAF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
