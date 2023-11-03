@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ReplaceInFiles\ReplaceInFiles.csproj" />
+    <ProjectReference Include="..\ReplaceInFiles.Cli\ReplaceInFiles.Cli.csproj" />
   </ItemGroup>
 
 </Project>

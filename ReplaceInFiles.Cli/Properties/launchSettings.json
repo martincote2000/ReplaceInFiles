@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "ReplaceInFiles": {
+      "commandName": "Project",
+      "commandLineArgs": "--folder \"C:\\Projects\\FlowFitTMS\" \r\n--extensions \"js,html\" \r\n--nopattern true \r\n--parameters \"http://localhost/FlowFitApi=${RootPath}/FlowFitApi;http://localhost/FlowFitNotificationApi=${SignalrHub}/FlowFitNotificationApi\" \r\n--ignorefoldernames \".git;.vs;packages;jquery;kendo;limitless\"",
+      "hotReloadEnabled": true
+    }
+  }
+}

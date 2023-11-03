@@ -13,12 +13,17 @@ The variable to find using
 ## How to use it
 
 ### Find and replace using match pattern & multiple parameters
+
+You could add multiple parameters seperated by semi-colon.  
+`--parameters "${FirstParam}=Value1;${SecondParam}=Value2"`
+
+
 ```command
 "ReplaceInFiles.exe" ^
-	--folder "C:\App\" ^
+	--folder "C:\App" ^
 	--extensions "js" ^	
-	--ignorefoldernames ".git,.vs,packages,jquery,kendo,limitless,plugins,node_modules" ^
-	--replaceparameters "${HostName}=https://dev.mysystem.com;${HostPort}=8888" ^
+	--ignorefoldernames ".git,.vs,packages,node_modules" ^
+	--parameters "${HostName}=https://dev.mysystem.com;${HostPort}=8888" ^
 	--includeSubFolder true 
 ```
 
@@ -45,11 +50,11 @@ The file replacer will search the exact string in the files found using `nopatte
 
 ```command
 "ReplaceInFiles.exe" ^
-	--folder "C:\MyFolder" ^
+	--folder "C:\App" ^
 	--extensions "js,html" ^	
-	--ignorefoldernames ".git,.vs,packages,jquery,kendo,limitless,plugins,node_modules" ^
+	--ignorefoldernames ".git,.vs,packages,node_modules" ^
 	--nopattern true ^
-	--replaceparameters "http://localhost/api/MySpecialApi=${HostName}/api/MySpecialApi;" ^
+	--parameters "http://localhost/api/MySpecialApi=${HostName}/api/MySpecialApi;" ^
 	--includeSubFolder true 
 ```
 
@@ -94,13 +99,14 @@ Replace values or parameter ${} in files.
 						 
 --parallelexecution      Optional with default '5'. Number of simultaneous parallels replacement
 
---verbose                Optional. Verbose mode
-
---nopattern              Optional. No search pattern. Usefull to find raw value.
+--nopattern              Optional. No search pattern. Usefull to find exact string.
 
 --includesubfolder       Optional with default 'True'. Include sub folder in
                          the search
-						 
+
+--ignorecase             Optional. Show details during the replacement process.						 
+
+--verbose                Optional. Show details during the replacement process.						 
 ```
 
 

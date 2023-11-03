@@ -15,6 +15,7 @@ namespace ReplaceInFiles
         private int _reportEveryIteration;
         private Action<double, double> _reportProgressAction;
         private bool _verbose;
+        private RegexOptions _regexOption;
         private readonly List<ReplacementVariable> _replacementVariables;
         private readonly ILogger _logger;
         private readonly IFileSystem _fileSystem;
@@ -22,6 +23,7 @@ namespace ReplaceInFiles
         public FileReplacer(ILogger logger, IFileSystem fileSystem)
         {
             _parallelsExecution = 5;
+            _regexOption = RegexOptions.None;
             _filesQueue = new ConcurrentQueue<string>();
             _replacementVariables = new List<ReplacementVariable>();
             _logger = logger;
@@ -58,6 +60,16 @@ namespace ReplaceInFiles
             return this;
         }
 
+        internal FileReplacer IgnoreCase(bool ignorecase)
+        {
+            if (ignorecase)
+                _regexOption = RegexOptions.IgnoreCase;
+            else
+                _regexOption = RegexOptions.None;
+
+            return this;
+        }
+
         public FileReplacer VerboseMode(bool verbose)
         {
             _verbose = verbose;
@@ -87,13 +99,13 @@ namespace ReplaceInFiles
 
         public FileReplacer ReplaceVariable(string variableName, string replacementValue)
         {
-            Ensure.That(variableName).IsNotEmptyOrWhiteSpace();
+            Ensure.That(variableName).IsNotNullOrWhiteSpace();
             Ensure.That(replacementValue).IsNotNull();
 
             ReplacementVariable replacementVariable = new()
             {
-                Name = variableName,
-                Value = replacementValue
+                Name = variableName.Trim(),
+                Value = replacementValue.Trim()
             };
 
             _replacementVariables.Add(replacementVariable);
@@ -165,14 +177,13 @@ namespace ReplaceInFiles
             {
                 foreach (var variable in _replacementVariables)
                 {
-                    content = Regex.Replace(content, variable.Name, match =>
-                    {
-                        if (_verbose)
-                            _logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variable.Name, variable.Value);
+                    content = Regex.Replace(content, variable.Name,  match =>
+                    {   
+                        _logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variable.Name, variable.Value);
 
                         variableFound++;
                         return variable.Value;
-                    });
+                    }, _regexOption);
                 }
             }
             else
@@ -194,7 +205,7 @@ namespace ReplaceInFiles
                     {
                         return match.Value;
                     }
-                });
+                }, _regexOption);
             }
 
             if (variableFound > 0)
@@ -203,5 +214,7 @@ namespace ReplaceInFiles
                 _logger.Information("No Changed | {filePath}", filePath);
 
         }
+
+        
     }
 }

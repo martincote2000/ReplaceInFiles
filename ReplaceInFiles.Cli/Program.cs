@@ -3,6 +3,7 @@ using FluentArgs;
 using ReplaceInFiles;
 using Serilog;
 using Spinnerino;
+using System;
 using System.Diagnostics;
 using System.IO.Abstractions;
 
@@ -12,6 +13,11 @@ Log.Logger = new LoggerConfiguration()
                     .WriteTo.Console()
                     .CreateLogger();
 
+//Global catch all error
+AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionHandler;
+
+
+
 Log.Logger.Information("Replace in files starting .....");
 
 FluentArgsBuilder.New()
@@ -19,8 +25,12 @@ FluentArgsBuilder.New()
     .Parameter<bool>("--verbose")
         .WithDescription("Verbose mode")
         .IsOptional()
-    .Parameter<bool?>("--nopattern")
-        .WithDescription("No search pattern")
+    .Parameter<bool>("--ignorecase")
+        .WithDescription("Indicate to find parameters using case-insensitive")
+        .IsOptionalWithDefault(false)
+    .Parameter<bool>("--nopattern")
+        .WithDescription("Specify to search the exact string of the parameter name specified.")
+        .WithExamples("http://localhost/api/myspecialApi=MyValue1    ")
         .IsOptional()
     .Parameter<bool>("--includesubfolder")
         .WithDescription("Include sub folder in the search")
@@ -46,7 +56,7 @@ FluentArgsBuilder.New()
         .WithDescription("Folder to search files")
         .WithExamples("C:\\MyFolder")
         .IsRequired()
-    .Call(folder => extensions => replaceparameters => ignorefolderNames => parallelexecution => searchInsubfolder => nopattern => verbose =>
+    .Call(folder => extensions => replaceparameters => ignorefolderNames => parallelexecution => searchInsubfolder => nopattern => ignorecase => verbose =>
     {
         IFileSystem fileSystem = new FileSystem();
 
@@ -66,14 +76,15 @@ FluentArgsBuilder.New()
             Log.Logger.Information("Replacement starting ... ");
 
             using (var bar = new InlineProgressBar())
-            {   
+            {
                 var replacer = new FileReplacer(Log.Logger, fileSystem)
                     .ForFiles(filesFound)
                     .ParallelsExecution(parallelexecution)
                     .VerboseMode(verbose)
+                    .IgnoreCase(ignorecase)
                     .ReportProgress(200, (fileCount, fileProcessed) =>
                     {
-                        var progressPercentage = Math.Round((fileProcessed / fileCount) * 100);
+                        var progressPercentage = Math.Round((fileProcessed / fileCount) * 100);                      
                         bar.SetProgress(progressPercentage);
                     })
                     .ReplaceVariable(replaceparameters?.ToArray());
@@ -91,3 +102,10 @@ FluentArgsBuilder.New()
     .Parse(args);
 
 Log.Logger.Information("Execution time {0}s", stopwatch.Elapsed.TotalSeconds);
+
+
+void UnhandledExceptionHandler(object sender, UnhandledExceptionEventArgs e)
+{
+    var exception = e.ExceptionObject as Exception;
+    Log.Logger.Error(exception, exception.Message);
+}
