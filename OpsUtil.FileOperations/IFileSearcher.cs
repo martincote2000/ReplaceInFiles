@@ -1,4 +1,4 @@
-﻿namespace ReplaceInFiles
+﻿namespace OpsUtil.FileOperations
 {
     public interface IFileSearcher
     {

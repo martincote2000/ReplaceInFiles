@@ -1,10 +1,11 @@
 ﻿
 
 using Microsoft.Extensions.DependencyInjection;
+using OpsUtil.FileOperations;
 using Serilog;
 using System.IO.Abstractions;
 
-namespace ReplaceInFiles.DependencyInjection
+namespace OpsUtil.FileOperations.DependencyInjection
 {
     public static class ReplaceInFileExtensions
     {

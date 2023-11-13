@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.IO.Abstractions;
 using System.Xml.Linq;
 
-namespace ReplaceInFiles
+namespace OpsUtil.FileOperations
 {
     public class FolderSearcher : IFolderSearcher
     {
@@ -34,7 +34,7 @@ namespace ReplaceInFiles
 
         public FolderSearcher ParallelsExecution(int parallelsExecution)
         {
-            EnsureThat.Ensure.That(parallelsExecution).IsInRange(1, 10);
+            Ensure.That(parallelsExecution).IsInRange(1, 10);
             _parallelsExecution = parallelsExecution;
             return this;
         }
@@ -104,7 +104,7 @@ namespace ReplaceInFiles
 
         private bool IsParentFolderContainsIgnoredFolders(IDirectoryInfo directoryInfo)
         {
-            if(!_ignoredFolderNames.Any() || directoryInfo == null)
+            if (!_ignoredFolderNames.Any() || directoryInfo == null)
                 return false;
 
             IDirectoryInfo? parentDirectoryInfo = directoryInfo.Parent;

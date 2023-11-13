@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ReplaceInFiles\ReplaceInFiles.csproj" />
+    <ProjectReference Include="..\OpsUtil.FileOperations\OpsUtil.FileOperations.csproj" />
   </ItemGroup>
 
   <ItemGroup>

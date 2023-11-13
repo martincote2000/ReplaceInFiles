@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.IO.Abstractions;
 using System.Text.RegularExpressions;
 
-namespace ReplaceInFiles
+namespace OpsUtil.FileOperations
 {
     public class FileReplacer : IFileReplacer
     {
@@ -32,7 +32,7 @@ namespace ReplaceInFiles
 
         public FileReplacer ParallelsExecution(int parallelsExecution)
         {
-            EnsureThat.Ensure.That(parallelsExecution).IsInRange(1, 10);
+            Ensure.That(parallelsExecution).IsInRange(1, 10);
 
             _parallelsExecution = parallelsExecution;
             return this;
@@ -158,7 +158,7 @@ namespace ReplaceInFiles
 
             TryReportProgress(fileCount, fileProcessed);
         }
-        
+
         private void ReplaceInFile(string filePath)
         {
             var fileContent = _fileSystem.File.ReadAllText(filePath);
@@ -194,7 +194,7 @@ namespace ReplaceInFiles
                 }
             }, _regexOption);
 
-            if(variableCount > 0)
+            if (variableCount > 0)
                 _fileSystem.File.WriteAllText(filePath, fileContent);
         }
 
@@ -218,7 +218,7 @@ namespace ReplaceInFiles
 
         private void TryReportProgress(long fileCount, long fileProcessed)
         {
-            if (_reportProgressAction != null && (fileProcessed % _reportEveryIteration) == 0)
+            if (_reportProgressAction != null && fileProcessed % _reportEveryIteration == 0)
             {
                 _reportProgressAction(fileCount, fileProcessed);
             }

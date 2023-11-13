@@ -2,7 +2,7 @@
 using System.Collections.Concurrent;
 using System.IO.Abstractions;
 
-namespace ReplaceInFiles
+namespace OpsUtil.FileOperations
 {
     public class FileSearcher : IFileSearcher
     {
@@ -29,7 +29,7 @@ namespace ReplaceInFiles
 
         public FileSearcher ParallelsExecution(int parallelsExecution)
         {
-            EnsureThat.Ensure.That(parallelsExecution).IsInRange(1, 10);
+            Ensure.That(parallelsExecution).IsInRange(1, 10);
             _folderSearcher.ParallelsExecution(parallelsExecution);
 
             _parallelsExecution = parallelsExecution;
