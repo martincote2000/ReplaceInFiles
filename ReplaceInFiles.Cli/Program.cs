@@ -73,9 +73,9 @@ FluentArgsBuilder.New()
     {
         logger.Information("Searching files ...");
 
-        var filterSearcher = builder.GetService<IFileSearcher>();
+        var fileSearcher = builder.GetService<IFileSearcher>();
 
-        List<string> filesFound = filterSearcher
+        List<string> filesFound = fileSearcher
             .InDirectory(folder)
             .WithExtensions(extensions?.ToArray())
             .ParallelsExecution(parallelexecution)
@@ -84,6 +84,7 @@ FluentArgsBuilder.New()
             .Search();
 
         logger.Information("Number of file founds: {0}", filesFound.Count);
+        
 
         if (filesFound.Any())
         {
@@ -91,20 +92,21 @@ FluentArgsBuilder.New()
 
             using (var bar = new InlineProgressBar())
             {
+                var reportEvery = ComputeReportEvery(filesFound.Count); 
                 var replacer = builder.GetService<IFileReplacer>();
 
                 replacer = replacer
                     .ForFiles(filesFound)
                     .ParallelsExecution(parallelexecution)
-                    .VerboseMode(verbose)
                     .IgnoreCase(ignorecase)
                     .ReportFileChange((filePath, variableName, replacementValue) =>
                     {
-                        logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variableName, replacementValue);
+                        if(verbose)
+                            logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variableName, replacementValue);
                     })
-                    .ReportProgress(200, (fileCount, fileProcessed) =>
+                    .ReportProgress(reportEvery, (fileCount, fileProcessed) =>
                     {
-                        var progressPercentage = Math.Round((fileProcessed / fileCount) * 100);                      
+                        var progressPercentage = Math.Round((fileProcessed / fileCount) * 100);                    
                         bar.SetProgress(progressPercentage);
                     })
                     .ReplaceVariable(replaceparameters?.ToArray());
@@ -123,6 +125,16 @@ FluentArgsBuilder.New()
 
 logger.Information("Execution time {0}s", stopwatch.Elapsed.TotalSeconds);
 
+
+int ComputeReportEvery(int fileCount)
+{
+    // Report every 5% of file count found.
+    double reportEvery = Math.Ceiling(fileCount * 0.05);
+    if (reportEvery <= 0)
+        reportEvery = 1;
+
+    return Convert.ToInt32(reportEvery);
+}
 
 void UnhandledExceptionHandler(object sender, UnhandledExceptionEventArgs e)
 {

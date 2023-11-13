@@ -104,10 +104,10 @@ namespace ReplaceInFiles
 
         private bool IsParentFolderContainsIgnoredFolders(IDirectoryInfo directoryInfo)
         {
-            if(!_ignoredFolderNames.Any())
+            if(!_ignoredFolderNames.Any() || directoryInfo == null)
                 return false;
 
-            IDirectoryInfo parentDirectoryInfo = directoryInfo.Parent;
+            IDirectoryInfo? parentDirectoryInfo = directoryInfo.Parent;
 
             while (parentDirectoryInfo != null)
             {

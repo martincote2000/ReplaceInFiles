@@ -1,5 +1,4 @@
 ﻿using EnsureThat;
-using Serilog;
 using System.Collections.Concurrent;
 using System.IO.Abstractions;
 using System.Text.RegularExpressions;
@@ -14,7 +13,6 @@ namespace ReplaceInFiles
         private string _endPattern;
         private int _reportEveryIteration;
         private Action<double, double> _reportProgressAction;
-        private bool _verbose;
         private RegexOptions _regexOption;
         private Action<string, string, string> _reportFileChangeAction;
         private readonly List<ReplacementVariable> _replacementVariables;
@@ -25,7 +23,7 @@ namespace ReplaceInFiles
             _parallelsExecution = 5;
             _regexOption = RegexOptions.None;
             _filesQueue = new ConcurrentQueue<string>();
-            _replacementVariables = new List<ReplacementVariable>();            
+            _replacementVariables = new List<ReplacementVariable>();
             _fileSystem = fileSystem;
 
             _startPattern = "${";
@@ -66,12 +64,6 @@ namespace ReplaceInFiles
             else
                 _regexOption = RegexOptions.None;
 
-            return this;
-        }
-
-        public FileReplacer VerboseMode(bool verbose)
-        {
-            _verbose = verbose;
             return this;
         }
 
@@ -153,7 +145,7 @@ namespace ReplaceInFiles
 
             Parallel.ForEach(
                 _filesQueue,
-                new ParallelOptions { MaxDegreeOfParallelism = _parallelsExecution },                
+                new ParallelOptions { MaxDegreeOfParallelism = _parallelsExecution },
                 filePath =>
                 {
                     ReplaceInFile(filePath);
@@ -166,66 +158,83 @@ namespace ReplaceInFiles
 
             TryReportProgress(fileCount, fileProcessed);
         }
+        
+        private void ReplaceInFile(string filePath)
+        {
+            var fileContent = _fileSystem.File.ReadAllText(filePath);
+            if (MatchPatternDefined())
+            {
+                ReplaceInFileWithMatchPattern(filePath, fileContent);
+            }
+            else
+            {
+                ReplaceInFileWithExactString(filePath, fileContent);
+            }
+        }
+
+        private void ReplaceInFileWithMatchPattern(string filePath, string fileContent)
+        {
+            int variableCount = 0;
+            var regexPattern = @"\" + _startPattern + "(.*?)" + _endPattern;
+
+            fileContent = Regex.Replace(fileContent, regexPattern, match =>
+            {
+                var variableName = match.Groups[1].Value;
+                var variable = _replacementVariables.Find(x => x.Name == variableName);
+                if (variable != null)
+                {
+                    TryReportFileChange(filePath, variable);
+
+                    variableCount++;
+                    return variable.Value;
+                }
+                else
+                {
+                    return match.Value;
+                }
+            }, _regexOption);
+
+            if(variableCount > 0)
+                _fileSystem.File.WriteAllText(filePath, fileContent);
+        }
+
+        private void ReplaceInFileWithExactString(string filePath, string fileContent)
+        {
+            int variableCount = 0;
+            foreach (var variable in _replacementVariables)
+            {
+                fileContent = Regex.Replace(fileContent, variable.Name, match =>
+                {
+                    TryReportFileChange(filePath, variable);
+
+                    variableCount++;
+                    return variable.Value;
+                }, _regexOption);
+            }
+
+            if (variableCount > 0)
+                _fileSystem.File.WriteAllText(filePath, fileContent);
+        }
 
         private void TryReportProgress(long fileCount, long fileProcessed)
-        {   
+        {
             if (_reportProgressAction != null && (fileProcessed % _reportEveryIteration) == 0)
             {
                 _reportProgressAction(fileCount, fileProcessed);
             }
         }
-
         private void TryReportFileChange(string filePath, ReplacementVariable replacementVariable)
         {
-            if(_reportFileChangeAction != null)
+            if (_reportFileChangeAction != null)
             {
                 _reportFileChangeAction(filePath, replacementVariable.Name, replacementVariable.Value);
             }
         }
 
-        private void ReplaceInFile(string filePath)
+        private bool MatchPatternDefined()
         {
-            var content = _fileSystem.File.ReadAllText(filePath);
-            int variableFound = 0;
-
-            if (string.IsNullOrEmpty(_startPattern) && string.IsNullOrEmpty(_endPattern))
-            {
-                foreach (var variable in _replacementVariables)
-                {
-                    content = Regex.Replace(content, variable.Name,  match =>
-                    {
-                        TryReportFileChange(filePath, variable);
-
-                        variableFound++;
-                        return variable.Value;
-                    }, _regexOption);
-                }
-            }
-            else
-            {
-                var regexPattern = @"\" + _startPattern + "(.*?)" + _endPattern;
-                content = Regex.Replace(content, regexPattern, match =>
-                {
-                    var variableName = match.Groups[1].Value;
-                    var variable = _replacementVariables.Find(x => x.Name == variableName);
-                    if (variable != null)
-                    {
-                        TryReportFileChange(filePath, variable);
-
-                        variableFound++;
-                        return variable.Value;
-                    }
-                    else
-                    {
-                        return match.Value;
-                    }
-                }, _regexOption);
-            }
-
-            if (variableFound > 0)
-                _fileSystem.File.WriteAllText(filePath, content);
+            return !string.IsNullOrWhiteSpace(_startPattern) && !string.IsNullOrWhiteSpace(_endPattern);
         }
 
-        
     }
 }
