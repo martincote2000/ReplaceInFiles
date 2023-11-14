@@ -51,7 +51,7 @@ FluentArgsBuilder.New()
     .ListParameter("--ignorefoldernames")
         .WithDescription("A list of folder names to ignore (ex: bin, obj, .git).")
         .WithValidation(n => !string.IsNullOrWhiteSpace(n), "A name must not only contain whitespace.")
-        .IsRequired()
+        .IsOptional()
     .ListParameter("-p", "--parameters")
         .WithDescription("List of parameters to find and replace in files. Parameter in the file is ${...variable name...}.")
         .WithExamples("--parameters \"ParameterName1=MyValue1;ParameterName2=MyValue2;\"")
@@ -69,7 +69,7 @@ FluentArgsBuilder.New()
     {
         logger.Information("Searching files ...");
 
-        var fileSearcher = builder.GetService<IFileSearcher>();
+        var fileSearcher = builder.GetRequiredService<IFileSearcher>();
 
         List<string> filesFound = fileSearcher
             .InDirectory(folder)

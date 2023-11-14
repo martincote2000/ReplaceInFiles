@@ -67,6 +67,17 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
+        public FileReplacer MatchPattern(string startPattern, string endPattern)
+        {
+            Ensure.That(startPattern).IsNotNullOrWhiteSpace();
+            Ensure.That(endPattern).IsNotNullOrWhiteSpace();
+
+            _startPattern = startPattern;
+            _endPattern = endPattern;
+
+            return this;
+        }
+
         public FileReplacer ReportFileChange(Action<string, string, string> reportFileChange)
         {
             Ensure.That(reportFileChange).IsNotNull();
@@ -82,17 +93,6 @@ namespace OpsUtil.FileOperations
 
             _reportEveryIteration = every;
             _reportProgressAction = reportProgress;
-            return this;
-        }
-
-        public FileReplacer MatchPattern(string startPattern, string endPattern)
-        {
-            Ensure.That(startPattern).IsNotNull();
-            Ensure.That(endPattern).IsNotNull();
-
-            _startPattern = startPattern;
-            _endPattern = endPattern;
-
             return this;
         }
 
@@ -113,6 +113,8 @@ namespace OpsUtil.FileOperations
 
         public FileReplacer ReplaceVariable(params string[] rawValues)
         {
+            Ensure.That(rawValues).IsNotNull();
+
             foreach (var rawValue in rawValues)
             {
                 var splitedBySemicolons = rawValue.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -174,7 +176,7 @@ namespace OpsUtil.FileOperations
 
         private void ReplaceInFileWithMatchPattern(string filePath, string fileContent)
         {
-            int variableCount = 0;
+            int variableFoundCount = 0;
             var regexPattern = @"\" + _startPattern + "(.*?)" + _endPattern;
 
             fileContent = Regex.Replace(fileContent, regexPattern, match =>
@@ -185,7 +187,7 @@ namespace OpsUtil.FileOperations
                 {
                     TryReportFileChange(filePath, variable);
 
-                    variableCount++;
+                    variableFoundCount++;
                     return variable.Value;
                 }
                 else
@@ -194,7 +196,7 @@ namespace OpsUtil.FileOperations
                 }
             }, _regexOption);
 
-            if (variableCount > 0)
+            if (variableFoundCount > 0)
                 _fileSystem.File.WriteAllText(filePath, fileContent);
         }
 
