@@ -1,5 +1,5 @@
 ﻿using FluentAssertions;
-using ReplaceInFiles;
+using OpsUtil.FileOperations;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ReplaceInFilesTests
+namespace OpsUtil.FileOperationsTests
 {
     public class FolderSearcherTests
     {
@@ -23,7 +23,7 @@ namespace ReplaceInFilesTests
             _rootDirectory = "C:\\Projects\\FlowFitTMS\\FlowFit.Web.FlowFit";
             _fileSystem = new MockFileSystem();
 
-            _folderSearcher = new FolderSearcher(_fileSystem);            
+            _folderSearcher = new FolderSearcher(_fileSystem);
             _folderSearcher.InDirectory(_rootDirectory);
         }
 

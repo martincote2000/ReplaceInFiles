@@ -1,4 +1,4 @@
-﻿namespace ReplaceInFiles
+﻿namespace OpsUtil.FileOperations
 {
     public interface IFileReplacer
     {
@@ -9,5 +9,6 @@
         void Replace();
         FileReplacer ReplaceVariable(params string[] rawValues);
         FileReplacer ReplaceVariable(string variableName, string replacementValue);
+        FileReplacer ReportFileChange(Action<string, string, string> reportFileChange);
     }
 }
