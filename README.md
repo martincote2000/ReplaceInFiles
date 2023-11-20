@@ -32,6 +32,7 @@ You could add multiple parameters seperated by semi-colon.
 
 
 ```command
+
 "OpsUtil.ReplaceInFiles.Cli.exe" ^
 	--folder "C:\App" ^
 	--extensions "js" ^	
@@ -121,7 +122,3 @@ Replace values or parameter ${} in files.
 
 --verbose                Optional. Show details during the replacement process.						 
 ```
-
-
-
-
