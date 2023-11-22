@@ -46,18 +46,16 @@ namespace OpsUtil.FileOperations
             if (extensions == null || extensions.Length == 0)
                 return this;
 
-            var cleanedExtensions = new List<string>();
-
             foreach (string extension in extensions)
             {
                 if (!string.IsNullOrWhiteSpace(extension))
                 {
-                    var cleanedExtension = extension.Replace("*.", "").Replace(".", "");
-                    cleanedExtensions.Add(cleanedExtension);
+                    var cleanedExtension = CleanExtension(extension);
+                    
+                    if(!_extensions.Contains(cleanedExtension))
+                        _extensions.Add(cleanedExtension);
                 }
             }
-
-            _extensions.AddRange(cleanedExtensions);
             return this;
         }
 
@@ -93,7 +91,12 @@ namespace OpsUtil.FileOperations
                 new ParallelOptions { MaxDegreeOfParallelism = _parallelsExecution },
                 folder =>
                 {
-                    foreach (var extension in _extensions)
+                    var internalFileExtensions = _extensions;
+                    
+                    if (!internalFileExtensions.Any())
+                        internalFileExtensions.Add(CleanExtension("*"));
+
+                    foreach (var extension in internalFileExtensions)
                     {
                         var foundFilesInFolder = _fileSystem.Directory.GetFiles(folder, $"*.{extension}", SearchOption.TopDirectoryOnly).ToList();
                         foundFilesInFolder.ForEach((f) =>
@@ -106,6 +109,15 @@ namespace OpsUtil.FileOperations
                 });
 
             return foundFiles.Distinct().ToList();
+        }
+
+
+        private string CleanExtension(string extension)
+        {
+            if (string.IsNullOrWhiteSpace(extension))
+                return extension;
+
+            return extension.Replace("*.", "").Replace(".", "");
         }
 
     }
