@@ -95,10 +95,10 @@ FluentArgsBuilder.New()
                     .ForFiles(filesFound)
                     .ParallelsExecution(parallelexecution)
                     .IgnoreCase(ignorecase)
-                    .ReportFileChange((filePath, variableName, replacementValue) =>
+                    .ReportFileChange((filePath, replacementVariable) =>
                     {
-                        if(verbose)
-                            logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, variableName, replacementValue);
+                        if(verbose && replacementVariable != null)
+                            logger.Information("Changed | {filePath} | {variableName} for {replacement}", filePath, replacementVariable.Name, replacementVariable.Value);
                     })
                     .ReportProgress(reportEvery, (fileCount, fileProcessed) =>
                     {

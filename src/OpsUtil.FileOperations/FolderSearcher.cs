@@ -91,7 +91,7 @@ namespace OpsUtil.FileOperations
                         filtredDirectories.Add(directory);
                     }
 
-                    _folderQueue.TryDequeue(out string dequeueValue);
+                    _folderQueue.TryDequeue(out string? dequeueValue);
                 });
             return filtredDirectories;
         }

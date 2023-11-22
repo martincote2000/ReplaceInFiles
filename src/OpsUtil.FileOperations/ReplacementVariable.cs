@@ -8,7 +8,7 @@ namespace OpsUtil.FileOperations
 {
     public class ReplacementVariable
     {
-        public string Name { get; set; }
-        public string Value { get; set; }
+        public string? Name { get; set; }
+        public string? Value { get; set; }
     }
 }

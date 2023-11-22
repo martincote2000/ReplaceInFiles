@@ -40,7 +40,7 @@ namespace OpsUtil.FileOperationsTests
         public void Search_WithNoDirectoryDefined_ShouldThrowException()
         {
             // Act & assert
-            var result = _fileSearcher.Invoking(x => x.Search()).Should().Throw<ArgumentException>();
+            _fileSearcher.Invoking(x => x.Search()).Should().Throw<ArgumentException>();
         }
 
         [Theory]
@@ -80,9 +80,9 @@ namespace OpsUtil.FileOperationsTests
 
             // Assert
             result.Should().HaveCount(3);
-            result.Any(x => x.EndsWith($"file0.txt")).Should().BeTrue();
-            result.Any(x => x.EndsWith("file1.txt")).Should().BeTrue();
-            result.Any(x => x.EndsWith("file0.csv")).Should().BeTrue();
+            result.Exists(x => x.EndsWith($"file0.txt")).Should().BeTrue();
+            result.Exists(x => x.EndsWith("file1.txt")).Should().BeTrue();
+            result.Exists(x => x.EndsWith("file0.csv")).Should().BeTrue();
         }
 
         [Fact]

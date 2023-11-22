@@ -105,7 +105,7 @@ namespace OpsUtil.FileOperations
                                 foundFiles.Add(f);
                         });
                     }
-                    _folderQueue.TryDequeue(out string dequeueValue);
+                    _folderQueue.TryDequeue(out string? dequeueValue);
                 });
 
             return foundFiles.Distinct().ToList();

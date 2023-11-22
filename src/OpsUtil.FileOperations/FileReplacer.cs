@@ -14,7 +14,7 @@ namespace OpsUtil.FileOperations
         private int _reportEveryIteration;
         private Action<double, double> _reportProgressAction;
         private RegexOptions _regexOption;
-        private Action<string, string, string> _reportFileChangeAction;
+        private Action<string, ReplacementVariable>? _reportFileChangeAction;
         private readonly List<ReplacementVariable> _replacementVariables;
         private readonly IFileSystem _fileSystem;
 
@@ -78,7 +78,7 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
-        public FileReplacer ReportFileChange(Action<string, string, string> reportFileChange)
+        public FileReplacer ReportFileChange(Action<string, ReplacementVariable> reportFileChange)
         {
             Ensure.That(reportFileChange).IsNotNull();
 
@@ -229,7 +229,7 @@ namespace OpsUtil.FileOperations
         {
             if (_reportFileChangeAction != null)
             {
-                _reportFileChangeAction(filePath, replacementVariable.Name, replacementVariable.Value);
+                _reportFileChangeAction(filePath, replacementVariable);
             }
         }
 
