@@ -50,9 +50,9 @@ namespace OpsUtil.FileOperations
             {
                 if (!string.IsNullOrWhiteSpace(extension))
                 {
-                    var cleanedExtension = CleanExtension(extension);
-                    
-                    if(!_extensions.Contains(cleanedExtension))
+                    var cleanedExtension = CleanFileExtension(extension);
+
+                    if (!_extensions.Contains(cleanedExtension))
                         _extensions.Add(cleanedExtension);
                 }
             }
@@ -82,37 +82,35 @@ namespace OpsUtil.FileOperations
 #pragma warning restore S3928 // Parameter names used into ArgumentException constructors should match an existing one 
 
             var folders = _folderSearcher.Search();
-            folders.ForEach(d => _folderQueue.Enqueue(d));
+
+            var internalFileExtensions = _extensions;
+
+            if (!internalFileExtensions.Any())
+                internalFileExtensions.Add(CleanFileExtension("*"));
 
             var foundFiles = new List<string>();
-
-            Parallel.ForEach(
-                _folderQueue,
-                new ParallelOptions { MaxDegreeOfParallelism = _parallelsExecution },
-                folder =>
+            folders.ForEach(folder =>
+            {
+                foreach (var extension in internalFileExtensions)
                 {
-                    var internalFileExtensions = _extensions;
-                    
-                    if (!internalFileExtensions.Any())
-                        internalFileExtensions.Add(CleanExtension("*"));
-
-                    foreach (var extension in internalFileExtensions)
+                    var foundFilesInFolder = _fileSystem.Directory.GetFiles(folder, $"*.{extension}", SearchOption.TopDirectoryOnly).ToList();
+                    foundFilesInFolder.ForEach((f) =>
                     {
-                        var foundFilesInFolder = _fileSystem.Directory.GetFiles(folder, $"*.{extension}", SearchOption.TopDirectoryOnly).ToList();
-                        foundFilesInFolder.ForEach((f) =>
-                        {
-                            if (!string.IsNullOrWhiteSpace(f))
-                                foundFiles.Add(f);
-                        });
-                    }
-                    _folderQueue.TryDequeue(out string? dequeueValue);
-                });
-
+                        if (!string.IsNullOrWhiteSpace(f))
+                            foundFiles.Add(f);
+                    });
+                }
+                _folderQueue.TryDequeue(out string? dequeueValue);
+            });
             return foundFiles.Distinct().ToList();
         }
 
-
-        private string CleanExtension(string extension)
+        /// <summary>
+        /// Make sure to clean the file extensions in case of the extension requested is defined like this:  *.ts ==> ts
+        /// </summary>
+        /// <param name="extension">The extension.</param>
+        /// <returns></returns>
+        private string CleanFileExtension(string extension)
         {
             if (string.IsNullOrWhiteSpace(extension))
                 return extension;

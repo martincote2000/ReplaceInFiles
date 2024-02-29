@@ -2,13 +2,14 @@
 {
     public interface IFileReplacer
     {
-        FileReplacer ForFile(string filePath);
-        FileReplacer ForFiles(List<string> files);
-        FileReplacer MatchPattern(string startPattern, string endPattern);
-        FileReplacer ParallelsExecution(int parallelsExecution);
-        void Replace();
-        FileReplacer ReplaceVariable(params string[] rawValues);
-        FileReplacer ReplaceVariable(string variableName, string replacementValue);
-        FileReplacer ReportFileChange(Action<string, ReplacementVariable> reportFileChange);
+        IFileReplacer ForFile(string filePath);
+        IFileReplacer ForFiles(List<string> files);
+        IFileReplacer MatchPattern(string startPattern, string endPattern);
+        IFileReplacer ParallelsExecution(int parallelsExecution);        
+        IFileReplacer ReplaceVariable(params string[] rawValues);
+        IFileReplacer ReplaceVariable(string variableName, string replacementValue);
+        IFileReplacer ReportFileChange(Action<string, ReplacementVariable> reportFileChange);
+        bool Replace();
+        IFileReplacer IgnoreCase(bool ignorecase);
     }
 }

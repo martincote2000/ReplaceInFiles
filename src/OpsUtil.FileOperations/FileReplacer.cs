@@ -1,6 +1,7 @@
 ﻿using EnsureThat;
 using System.Collections.Concurrent;
 using System.IO.Abstractions;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace OpsUtil.FileOperations
@@ -11,8 +12,6 @@ namespace OpsUtil.FileOperations
         private int _parallelsExecution;
         private string _startPattern;
         private string _endPattern;
-        private int _reportEveryIteration;
-        private Action<double, double> _reportProgressAction;
         private RegexOptions _regexOption;
         private Action<string, ReplacementVariable>? _reportFileChangeAction;
         private readonly List<ReplacementVariable> _replacementVariables;
@@ -30,7 +29,7 @@ namespace OpsUtil.FileOperations
             _endPattern = "}";
         }
 
-        public FileReplacer ParallelsExecution(int parallelsExecution)
+        public IFileReplacer ParallelsExecution(int parallelsExecution)
         {
             Ensure.That(parallelsExecution).IsInRange(1, 10);
 
@@ -38,7 +37,7 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
-        public FileReplacer ForFile(string filePath)
+        public IFileReplacer ForFile(string filePath)
         {
             Ensure.That(filePath).IsNotNullOrWhiteSpace();
 
@@ -49,7 +48,7 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
-        public FileReplacer ForFiles(List<string> files)
+        public IFileReplacer ForFiles(List<string> files)
         {
             Ensure.That(files).IsNotNull();
 
@@ -57,7 +56,7 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
-        public FileReplacer IgnoreCase(bool ignorecase)
+        public IFileReplacer IgnoreCase(bool ignorecase)
         {
             if (ignorecase)
                 _regexOption = RegexOptions.IgnoreCase;
@@ -67,10 +66,10 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
-        public FileReplacer MatchPattern(string startPattern, string endPattern)
+        public IFileReplacer MatchPattern(string startPattern, string endPattern)
         {
-            Ensure.That(startPattern).IsNotNullOrWhiteSpace();
-            Ensure.That(endPattern).IsNotNullOrWhiteSpace();
+            Ensure.That(startPattern).IsNotNull();
+            Ensure.That(endPattern).IsNotNull();
 
             _startPattern = startPattern;
             _endPattern = endPattern;
@@ -78,7 +77,7 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
-        public FileReplacer ReportFileChange(Action<string, ReplacementVariable> reportFileChange)
+        public IFileReplacer ReportFileChange(Action<string, ReplacementVariable> reportFileChange)
         {
             Ensure.That(reportFileChange).IsNotNull();
 
@@ -86,20 +85,22 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
-        public FileReplacer ReportProgress(int every, Action<double, double> reportProgress)
-        {
-            Ensure.That(every).IsGt(0);
-            Ensure.That(reportProgress).IsNotNull();
-
-            _reportEveryIteration = every;
-            _reportProgressAction = reportProgress;
-            return this;
-        }
-
-        public FileReplacer ReplaceVariable(string variableName, string replacementValue)
+        public IFileReplacer ReplaceVariable(string variableName, string replacementValue)
         {
             Ensure.That(variableName).IsNotNullOrWhiteSpace();
             Ensure.That(replacementValue).IsNotNull();
+
+            if (MatchPatternDefined())
+            {
+                if (!variableName.StartsWith(_startPattern))
+                {
+                    variableName = _startPattern + variableName;
+                }
+                if (!variableName.EndsWith(_endPattern))
+                {
+                    variableName += _endPattern;
+                }
+            }
 
             ReplacementVariable replacementVariable = new()
             {
@@ -111,11 +112,11 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
-        public FileReplacer ReplaceVariable(params string[] rawValues)
+        public IFileReplacer ReplaceVariable(params string[] rawParameters)
         {
-            Ensure.That(rawValues).IsNotNull();
+            Ensure.That(rawParameters).IsNotNull();
 
-            foreach (var rawValue in rawValues)
+            foreach (var rawValue in rawParameters)
             {
                 var splitedBySemicolons = rawValue.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
 
@@ -132,16 +133,17 @@ namespace OpsUtil.FileOperations
             return this;
         }
 
-        public void Replace()
+        public bool Replace()
         {
             if (!_filesQueue.Any())
-                return;
+                return false;
 
             if (!_replacementVariables.Any())
             {
                 throw new InvalidOperationException("No variable replacements provided.");
             }
 
+            long fileReplaced = 0;
             long fileProcessed = 0;
             long fileCount = _filesQueue.Count;
 
@@ -150,81 +152,102 @@ namespace OpsUtil.FileOperations
                 new ParallelOptions { MaxDegreeOfParallelism = _parallelsExecution },
                 filePath =>
                 {
-                    ReplaceInFile(filePath);
+                    if (ReplaceInFile(filePath))
+                        fileReplaced = Interlocked.Increment(ref fileReplaced);
 
                     fileProcessed = Interlocked.Increment(ref fileProcessed);
-                    TryReportProgress(fileCount, fileProcessed);
 
                     _filesQueue.TryDequeue(out string dequeueValue);
                 });
 
-            TryReportProgress(fileCount, fileProcessed);
+
+            return fileReplaced > 0;
         }
 
-        private void ReplaceInFile(string filePath)
+        private bool ReplaceInFile(string filePath)
         {
             var fileContent = _fileSystem.File.ReadAllText(filePath);
-            if (MatchPatternDefined())
-            {
-                ReplaceInFileWithMatchPattern(filePath, fileContent);
-            }
-            else
-            {
-                ReplaceInFileWithExactString(filePath, fileContent);
-            }
-        }
+            var regexPatternExactString = @"\b{0}\b";
+            var regexPatternWithEscapeCharacter = @"{0}";
+            int replacementCount = 0;
 
-        private void ReplaceInFileWithMatchPattern(string filePath, string fileContent)
-        {
-            int variableFoundCount = 0;
-            var regexPattern = @"\" + _startPattern + "(.*?)" + _endPattern;
-
-            fileContent = Regex.Replace(fileContent, regexPattern, match =>
-            {
-                var variableName = match.Groups[1].Value;
-                var variable = _replacementVariables.Find(x => x.Name == variableName);
-                if (variable != null)
-                {
-                    TryReportFileChange(filePath, variable);
-
-                    variableFoundCount++;
-                    return variable.Value;
-                }
-                else
-                {
-                    return match.Value;
-                }
-            }, _regexOption);
-
-            if (variableFoundCount > 0)
-                _fileSystem.File.WriteAllText(filePath, fileContent);
-        }
-
-        private void ReplaceInFileWithExactString(string filePath, string fileContent)
-        {
-            int variableCount = 0;
             foreach (var variable in _replacementVariables)
             {
-                fileContent = Regex.Replace(fileContent, variable.Name, match =>
+                string matchPattern;
+                
+                var escapedVariableName = Regex.Escape(variable.Name);
+                if (!MatchPatternDefined() && escapedVariableName == variable.Name)
+                    matchPattern = string.Format(regexPatternExactString, escapedVariableName);
+                else if (MatchPatternDefined() && escapedVariableName == variable.Name)
+                    matchPattern = string.Format(regexPatternWithEscapeCharacter, escapedVariableName);
+                else
+                    matchPattern = string.Format(regexPatternWithEscapeCharacter, escapedVariableName);
+
+                //if (escapedVariableName == variable.Name)
+                //    matchPattern = string.Format(regexPatternExactString, escapedVariableName);
+                //else
+                //    matchPattern = string.Format(regexPatternWithEscapeCharacter, escapedVariableName);
+
+                fileContent = Regex.Replace(fileContent, matchPattern, match =>
                 {
                     TryReportFileChange(filePath, variable);
 
-                    variableCount++;
+                    replacementCount++;
                     return variable.Value;
                 }, _regexOption);
             }
 
-            if (variableCount > 0)
+            if (replacementCount > 0)
+            {
+                // Update files only when variables has been updated.
                 _fileSystem.File.WriteAllText(filePath, fileContent);
+                return true;
+            }
+            return false;
         }
 
-        private void TryReportProgress(long fileCount, long fileProcessed)
+        private bool ReplaceVariable(string text, string variableName, string variableValue)
         {
-            if (_reportProgressAction != null && fileProcessed % _reportEveryIteration == 0)
+            var regexPatternExactString = @"\b{0}\b";
+            var regexPatternWithEscapeCharacter = @"\{0}";
+            
+            string matchPattern;
+            var escapedVariableName = Regex.Escape(variableName);
+            if (escapedVariableName == variableName)
+                matchPattern = string.Format(regexPatternExactString, escapedVariableName);
+            else
+                matchPattern = string.Format(regexPatternWithEscapeCharacter, escapedVariableName);
+
+            Regex.Replace(text, matchPattern, match =>
             {
-                _reportProgressAction(fileCount, fileProcessed);
-            }
+                return variableValue;
+            }, _regexOption);
+
+            return false;
         }
+
+        private string ReplaceVariable2(string text, string variableName, string variableValue)
+        {
+            var regexPatternExactString = @"\b{0}\b";
+            var regexPatternWithEscapeCharacter = @"\{0}";
+
+            string matchPattern;
+            var escapedVariableName = Regex.Escape(variableName);
+            if (escapedVariableName == variableName)
+                matchPattern = string.Format(regexPatternExactString, escapedVariableName);
+            else
+                matchPattern = string.Format(regexPatternWithEscapeCharacter, escapedVariableName);
+
+            // Capture the result of Regex.Replace
+            string replacedText = Regex.Replace(text, matchPattern, match =>
+            {
+                return variableValue;
+            }, _regexOption);
+
+            // Return the modified string
+            return replacedText;
+        }
+
         private void TryReportFileChange(string filePath, ReplacementVariable replacementVariable)
         {
             if (_reportFileChangeAction != null)

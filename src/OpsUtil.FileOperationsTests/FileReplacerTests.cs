@@ -100,7 +100,7 @@ namespace OpsUtil.FileOperationsTests
         }
 
         [Fact]
-        public void Search_WhenFileHaveParameterToReplace_ShouldReplaceHasExpected()
+        public void Search_WhenFileContainsParameter_ShouldReplaceHasExpected()
         {
             var filePath = "C:\\file1.txt";
             var fileContent = "Sample text without ${ParameterName1} to replace";
@@ -140,6 +140,45 @@ namespace OpsUtil.FileOperationsTests
             var parameters = $"ParameterName1={value1};ParameterName2={value2};ParameterName3={value3}";
 
             _replacer
+                .ReplaceVariable(parameters)
+                .ParallelsExecution(1)
+                .ForFile(filePath);
+
+            // Act 
+            _replacer.Replace();
+
+            // Assert 
+            _fileSystem.File.ReadAllText(filePath).Should().Be(expectedFileContent);
+            _fileSystem.FileInfo.New(filePath).LastWriteTime.Should().NotBe(initialLastWriteTime);
+        }
+
+        [Theory]
+        [InlineData("${", "}", "${MyName}")]
+        [InlineData("", "", "${MyName}")]
+        [InlineData("[", "]", "[MyValue]")]
+        [InlineData("", "", "[MyValue]")]
+        [InlineData("<", ">", "<MyValue>")]
+        [InlineData("+", "+", "+MyValue+")]
+        [InlineData("(", ")", "(MyValue)")]
+        [InlineData("", "", "MyValue")]
+        public void Search_WhenMatchPatternDefined_ShouldReplace(string startPattern, string endPattern, string variableName)
+        {
+            // Arrange
+            var filePath = "C:\\file1.txt";
+            var value1 = "John";
+
+            var fileContent = $"Hello {variableName}.";
+            var expectedFileContent = $"Hello {value1}.";
+            var mockFile = new MockFileData(fileContent);
+
+            _fileSystem.AddFile(filePath, mockFile);
+            var initialLastWriteTime = _fileSystem.FileInfo.New(filePath).LastWriteTime;
+
+            var parameters = $"{variableName}=" + value1 + ";";
+
+            _replacer
+                // Make sure to update the match pattern before adding parameters.
+                .MatchPattern(startPattern, endPattern)
                 .ReplaceVariable(parameters)
                 .ParallelsExecution(1)
                 .ForFile(filePath);

@@ -2,7 +2,7 @@
   "profiles": {
     "ReplaceInFiles": {
       "commandName": "Project",
-      "commandLineArgs": "--folder \"C:\\MyProjects\\\" \r\n--extensions \"js,html\" \r\n--nopattern true \r\n--parameters \"http://localhost=${RootPath};\" \r\n--ignorefoldernames \".git;.vs;packages;jquery;kendo;limitless\"",
+      "commandLineArgs": "--folder \"C:\\Projects\\Extract\\FlowfitProviderFinal\" \r\n--extensions \"ts,js\" \r\n--ignorefoldernames \".git,.vs,packages,node_modules\" \r\n--parameters \"${SignalrHub}=https://v32.flowfitservices.com;${RootPath}=https://v32.flowfitservices.com;${RootPathGroupShare}=https://v32.flowfitservices.com;${RootPathNotification}=https://v32.flowfitservices.com;${ReportsPath}=https://v32.flowfitservices.com;${AvatarResourcePath}=https://v32.flowfitservices.com;${SurveyManager}=https://v32.flowfitservices.com;${ApiEndpoint}=https://v32.flowfitservices.com;\" \r\n--includesubfolder true \r\n--parallelexecution 5",
       "hotReloadEnabled": true
     }
   }
