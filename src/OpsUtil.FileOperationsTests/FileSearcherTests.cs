@@ -14,35 +14,39 @@ namespace OpsUtil.FileOperationsTests
 
         public FileSearcherTests()
         {
-            _fileSystem = new MockFileSystem();
+            _fileSystem = new MockFileSystem();            
             _fileSearcher = new FileSearcher(_fileSystem);
         }
 
         [Fact]
-        public void Search_WithNoExtensions_ShouldReturnEmptyList()
+        public void Search_WithNoExtensionsDefined_ShouldReturnAllFiles()
         {
             // Arrange
+            var rootFolder = "/root";
+            _fileSystem.AddDirectory(rootFolder);
+            CreateGenericFiles(rootFolder, 2, "txt");
+            CreateGenericFiles(rootFolder, 1, "csv");
 
-            _fileSearcher.InDirectory("C:\\");
+            _fileSearcher.InDirectory(rootFolder);
 
             // Act
             var result = _fileSearcher.Search();
 
             // Assert
-            result.Should().BeEmpty();
+            result.Should().HaveCount(3);
         }
 
         [Fact]
         public void Search_WithNoDirectoryDefined_ShouldThrowException()
         {
             // Act & assert
-            var result = _fileSearcher.Invoking(x => x.Search()).Should().Throw<ArgumentException>();
+            _fileSearcher.Invoking(x => x.Search()).Should().Throw<ArgumentException>();
         }
 
         [Theory]
         [InlineData(null)]
         [InlineData("")]
-        public void WithExtensions_WithNullOrEmptyExtension_ShouldIgnoreAddExtensions(string extension)
+        public void WithExtensions_WithNullOrEmptyExtension_ShouldNotAddExtension(string extension)
         {
             // Arrange
             _fileSearcher.WithExtensions(extension);
@@ -55,16 +59,20 @@ namespace OpsUtil.FileOperationsTests
         public void Search_WithExtensionsInOneDirectory_ShouldReturnMatchingFiles()
         {
             // Arrange
-            var directory = "C:\\ExampleDirectory";
+            var rootFolder = "/root";
             var extensions = new[] { "txt", "csv" };
 
-            _fileSystem.AddFile(Path.Combine(directory, "file1.txt"), new MockFileData("file content"));
-            _fileSystem.AddFile(Path.Combine(directory, "file2.txt"), new MockFileData("file content"));
-            _fileSystem.AddFile(Path.Combine(directory, "data.csv"), new MockFileData("csv data"));
-            _fileSystem.AddDirectory($"{directory}\\Test");
+            _fileSystem.AddDirectory(rootFolder);
+            _fileSystem.AddDirectory($"{rootFolder}/Test");
+
+            CreateGenericFiles(rootFolder, 2, "txt");
+            CreateGenericFiles(rootFolder, 1, "csv");
+            CreateGenericFiles(rootFolder, 1, "gif");
+            CreateGenericFiles(rootFolder, 1, "bmp");
+            CreateGenericFiles(rootFolder, 1, "pdf");
 
             _fileSearcher
-                .InDirectory(directory)
+                .InDirectory(rootFolder)
                 .WithExtensions(extensions);
 
             // Act
@@ -72,25 +80,28 @@ namespace OpsUtil.FileOperationsTests
 
             // Assert
             result.Should().HaveCount(3);
-            result.Should().Contain(new[] { Path.Combine(directory, "file1.txt"), Path.Combine(directory, "file2.txt"), Path.Combine(directory, "data.csv") });
+            result.Exists(x => x.EndsWith($"file0.txt")).Should().BeTrue();
+            result.Exists(x => x.EndsWith("file1.txt")).Should().BeTrue();
+            result.Exists(x => x.EndsWith("file0.csv")).Should().BeTrue();
         }
 
         [Fact]
         public void Search_WithFolderContainsDifferentFileExtensions_ShouldOnlyReturnTheSpecifiedExtensions()
         {
             // Arrange
-            var directory = "C:\\ExampleDirectory";
+            var rootFolder = "/root";
+            _fileSystem.AddDirectory(rootFolder);
+            _fileSystem.AddDirectory($"{rootFolder}/Test");
+                        
             var extensions = new[] { "txt", "csv" };
 
-            _fileSystem.AddFile(Path.Combine(directory, "file1.gif"), new MockFileData("file content"));
-            _fileSystem.AddFile(Path.Combine(directory, "file2.doc"), new MockFileData("file content"));
-            _fileSystem.AddFile(Path.Combine(directory, "file3.txt"), new MockFileData("file content"));
-            _fileSystem.AddFile(Path.Combine(directory, "file4.csv"), new MockFileData("csv data"));
-
-            _fileSystem.AddDirectory($"{directory}\\Test");
+            CreateGenericFiles(rootFolder, 1, "gif");
+            CreateGenericFiles(rootFolder, 1, "doc");
+            CreateGenericFiles(rootFolder, 1, "txt");
+            CreateGenericFiles(rootFolder, 1, "csv");
 
             _fileSearcher
-                .InDirectory(directory)
+                .InDirectory(rootFolder)
                 .WithExtensions(extensions);
 
             // Act
@@ -100,6 +111,15 @@ namespace OpsUtil.FileOperationsTests
             result.Should().HaveCount(2);
             result.Where(file => extensions.Any(ext => ext.Equals(_fileSystem.FileInfo.New(file).ExtensionWithoutDot(), StringComparison.CurrentCultureIgnoreCase)))
                 .Should().HaveCount(2, "Only have the expected file extensions");
+        }
+
+
+        private void CreateGenericFiles(string folder, int fileCount, string extension)
+        {
+            for (int index = 0; index < fileCount; index++)
+            {
+                _fileSystem.AddFile(Path.Combine(folder, $"file{index}.{extension}"), new MockFileData($"file content of file{index}"));
+            }
         }
     }
 

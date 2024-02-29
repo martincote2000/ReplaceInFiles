@@ -1,9 +1,0 @@
-{
-  "profiles": {
-    "ReplaceInFiles": {
-      "commandName": "Project",
-      "commandLineArgs": "--folder \"C:\\MyProjects\\\" \r\n--extensions \"js,html\" \r\n--nopattern true \r\n--parameters \"http://localhost=${RootPath};\" \r\n--ignorefoldernames \".git;.vs;packages;jquery;kendo;limitless\"",
-      "hotReloadEnabled": true
-    }
-  }
-}
